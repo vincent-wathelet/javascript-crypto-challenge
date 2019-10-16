@@ -1,28 +1,29 @@
 const soduim = require('libsodium-wrappers');
 
-let serverPublicKey, serverPrivateKey, clientPublicKey
-let rx, tx
+let serverPublicKey, serverPrivateKey, clientPublicKey;
+let rx, tx;
 
 async function Init() {
 
     await soduim.ready;
-    const keypair = nacl.crypto_kx_keypair()
-        serverPrivateKey = keypair.privateKey
-        serverPublicKey = keypair.publicKey
+    const keypair = soduim.crypto_kx_keypair();
+    serverPrivateKey = keypair.privateKey;
+    serverPublicKey = keypair.publicKey;
 
 }
 
-async function Getsharedkeys() 
+/*async function Getsharedkeys() 
 {
-    const sharedKeys = await nacl.crypto_kx_client_session_keys(
-        serverPublicKe,
+    await Init();
+    const sharedKeys = await soduim.crypto_kx_server_session_keys(
+        serverPublicKey,
         serverPrivateKey,
         clientPublicKey
-      )
-      rx = sharedKeys.sharedRx
-      tx = sharedKeys.sharedTx
+      );
+      rx = sharedKeys.sharedRx;
+      tx = sharedKeys.sharedTx;
     
-}
+}*/
 
 module.exports.serverPublicKey = async function ServerPublicKey()
 {
@@ -30,37 +31,41 @@ module.exports.serverPublicKey = async function ServerPublicKey()
     return serverPublicKey;
 }
 
-module.exports.setClientPublicKey = async function SetClientPublicKey(key)
+module.exports.setClientPublicKey =  function SetClientPublicKey(key)
 {
-    if(typeof(key) == '' || key == null)
-    {
 
-        throw "invalid key";
-    }
-
-    else
-    {
-        if(clientPublicKey != null)
+        if(key != null && (typeof(clientPublicKey) == 'undefined' || clientPublicKey == null || clientPublicKey == key ) )
         {
-            clientPublicKey == key;
-            await getsharedkeys();
+            clientPublicKey = key;
         }
         else
         {
             throw "client public key already set";
         }
-    }
+
+    
 
 }
 
 
-module.exports.decrypt = async function decrypt(ciphertext, nonce) 
+module.exports.decrypt =  function decrypt(ciphertext, nonce) 
 {
-    return await soduim.crypto_secretbox_open_easy(ciphertext,nonce,rx);
+    const sharedKeys = soduim.crypto_kx_server_session_keys(
+        serverPublicKey,
+        serverPrivateKey,
+        clientPublicKey
+      );
+    return  soduim.crypto_secretbox_open_easy(ciphertext,nonce,sharedKeys.sharedRx);
 }
-module.exports.encrypt = async function encrypt(msg) 
+module.exports.encrypt =  function encrypt(msg) 
 {
-    var nonce = await soduim.randombytes_buf(soduim.crypto_secretbox_NONCEBYTES);
-    return await soduim.crypto_secretbox_easy(msg,nonce,tx);
+    const sharedKeys = soduim.crypto_kx_server_session_keys(
+        serverPublicKey,
+        serverPrivateKey,
+        clientPublicKey
+      );
+    var nonce =  soduim.randombytes_buf(soduim.crypto_secretbox_NONCEBYTES);
+    var ciphertext = soduim.crypto_secretbox_easy(msg,nonce,sharedKeys.sharedTx);
+    return { ciphertext, nonce};
     
 }
