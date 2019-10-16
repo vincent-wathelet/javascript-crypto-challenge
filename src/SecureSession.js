@@ -39,8 +39,12 @@ module.exports.setClientPublicKey = async function SetClientPublicKey(key)
     }
 
     else
+    {
+        if(clientPublicKey != null)
+        {
             clientPublicKey == key;
             await getsharedkeys();
+        }
         else
         {
             throw "client public key already set";
